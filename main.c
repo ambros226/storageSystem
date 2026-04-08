@@ -18,11 +18,6 @@ struct Vinyl {
     double sellPrice;      // Prodejní cena bez DPH
     int amount;            // Počet kusů
     int dph_index;         // Index pro pole DPH_levels
-    struct {
-        int day;
-        int month;
-        int year;
-    } date;
 };
 
 // Dynamické pole
@@ -52,7 +47,6 @@ void vinylDetail(int i) {
     printf("Sell Price:  %.2f (bez DPH)\n", stock[i].sellPrice);
     printf("Sell Price:  \033[1;32m%.2f (s DPH)\033[0m\n", priceWithDPH);
     printf("Amount:      %d ks\n", stock[i].amount);
-    printf("Date added:  %d.%d.%d\n", stock[i].date.day, stock[i].date.month, stock[i].date.year);
 }
 
 void editVinyl(int i) {
@@ -74,16 +68,16 @@ void deleteVinyl(int i) {
 
 void vinylFuns(int i) {
     char choice;
-    int back = 0;
-    while (!back) {
+    int off = 0;
+    while (!off) {
         printf("\nActions for [%s]:\n", stock[i].name);
         printf("1 - Show detail\n2 - Edit vinyl\n3 - Delete vinyl\nX - Back\nChoice: ");
         scanf(" %c", &choice);
         switch (choice) {
             case '1': vinylDetail(i); break;
             case '2': editVinyl(i); break;
-            case '3': deleteVinyl(i); back = 1; break;
-            case 'X': case 'x': back = 1; break;
+            case '3': deleteVinyl(i); off = 1; break;
+            case 'X': case 'x': off = 1; break;
             default: printf("Invalid choice\n");
         }
     }
@@ -113,8 +107,6 @@ void addVinyl() {
     scanf("%d", &p->amount);
     printf("DPH Level (0=0%%, 1=10%%, 2=21%%): ");
     scanf("%d", &p->dph_index);
-    printf("Date (day month year): ");
-    scanf("%d %d %d", &p->date.day, &p->date.month, &p->date.year);
 
     countVinyls++;
     printf("\033[32mVinyl added to stock.\033[0m\n");
