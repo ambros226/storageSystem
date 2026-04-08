@@ -1,18 +1,23 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+
 #define NAME_LEN 30
 #define GENRE_LEN 30
 #define INTERPRETER_LEN 30
-#define MAX_VINYLS 5
 
+// Hladiny DPH podle zadání
+float DPH_levels[] = {1.0, 1.10, 1.21};
 
 struct Vinyl {
     char name[NAME_LEN];
     char interpreter[INTERPRETER_LEN];
     char genre[GENRE_LEN];
-    double price;
-    int count;
-
+    char ean[15];          // Přidáno dle zadání
+    double buyPrice;       // Nákupní cena
+    double sellPrice;      // Prodejní cena bez DPH
+    int amount;            // Počet kusů
+    int dph_index;         // Index pro pole DPH_levels
     struct {
         int day;
         int month;
@@ -20,183 +25,147 @@ struct Vinyl {
     } date;
 };
 
-struct Vinyl vinyls[5] = {
-    {"Abbey Road", "The Beatles", "Rock", 599.90, 3, {12, 3, 2024}},
-    {"Back in Black", "AC/DC", "Rock", 549.00, 5, {5, 1, 2024}},
-    {"Thriller", "Michael Jackson", "Pop", 499.00, 2, {20, 2, 2024}},
-    {"Random Access Memories", "Daft Punk", "Electronic", 650.00, 1, {10, 4, 2024}},
-    {"Nevermind", "Nirvana", "Grunge", 530.00, 4, {18, 3, 2024}}
-};
-int countVinyls = MAX_VINYLS;
+// Dynamické pole
+struct Vinyl *stock = NULL;
+int countVinyls = 0;
 
 void shopPrint() {
     printf("\n==============================\n");
-    printf("Welcome in ");
-    printf("\033[1;34mVinyl Records Store\033[0m!");
+    printf("Welcome in \033[1;34mVinyl Records Store\033[0m!");
     printf("\n==============================\n");
 }
 
 void menuPrint() {
     printf("\nOptions:\n");
-    printf("1 - All records\n");
-    printf("2 - Search vinyl by name\n");
-    printf("3 - Search vinyl by price\n");
+    printf("1 - All records (Sklad)\n");
+    printf("2 - Add new vinyl\n");
+    printf("3 - Search & Manage vinyl\n");
     printf("X - Exit\n");
 }
 
-void editVinyl(int i) {
-    printf("New price[Old:%d]: ",vinyls[i].price);
-    scanf("%lf", &vinyls[i].price);
-
-    printf("New count[Old:%d]: ",vinyls[i].count);
-    scanf("%d", &vinyls[i].count);
-
-    printf("\033[31mVinyl updated\033[0m\n");
-}
-
-void allVinyls() {
-    printf("\n==============================\n");
-    printf("Vinyls:");
-    printf("\n==============================\n");
-
-    for (int i = 0; i < countVinyls; i++) {
-        printf(
-            "%d | %s | %s | %s | %.2f | %d | %d.%d.%d\n",
-            i + 1,
-            vinyls[i].name,
-            vinyls[i].interpreter,
-            vinyls[i].genre,
-            vinyls[i].price,
-            vinyls[i].count,
-            vinyls[i].date.day,
-            vinyls[i].date.month,
-            vinyls[i].date.year
-        );
-    }
-}
-
 void vinylDetail(int i) {
+    double priceWithDPH = stock[i].sellPrice * DPH_levels[stock[i].dph_index];
     printf("\n===== VINYL DETAIL =====\n");
-    printf("Name: \033[1;31m%s\033[0m\n", vinyls[i].name);
-    printf("Interpreter: \033[1;31m%s\033[0m\n", vinyls[i].interpreter);
-    printf("Genre: \033[1;31m%s\033[0m\n", vinyls[i].genre);
-    printf("Price: \033[1;34m%.2f\033[0m\n", vinyls[i].price);
-    printf("Count: \033[1;34m%d\033[0m\n", vinyls[i].count);
-    printf("Date: \033[1;32m%d.%d.%d\033[0m\n",
-           vinyls[i].date.day,
-           vinyls[i].date.month,
-           vinyls[i].date.year);
+    printf("Name:        \033[1;31m%s\033[0m\n", stock[i].name);
+    printf("EAN:         %s\n", stock[i].ean);
+    printf("Buy Price:   %.2f\n", stock[i].buyPrice);
+    printf("Sell Price:  %.2f (bez DPH)\n", stock[i].sellPrice);
+    printf("Sell Price:  \033[1;32m%.2f (s DPH)\033[0m\n", priceWithDPH);
+    printf("Amount:      %d ks\n", stock[i].amount);
+    printf("Date added:  %d.%d.%d\n", stock[i].date.day, stock[i].date.month, stock[i].date.year);
+}
 
+void editVinyl(int i) {
+    printf("New sell price [Old: %.2f]: ", stock[i].sellPrice);
+    scanf("%lf", &stock[i].sellPrice);
+    printf("New amount [Old: %d]: ", stock[i].amount);
+    scanf("%d", &stock[i].amount);
+    printf("\033[32mVinyl updated\033[0m\n");
 }
 
 void deleteVinyl(int i) {
     for (int x = i; x < countVinyls - 1; x++) {
-        vinyls[x] = vinyls[x + 1];
+        stock[x] = stock[x + 1];
     }
+    stock = realloc(stock, countVinyls-1 * sizeof(struct Vinyl));
     countVinyls--;
-    printf("\033[31mVinyl deleted\033[0m\n");
+    printf("\033[31mVinyl deleted from stock\033[0m\n");
 }
+
 void vinylFuns(int i) {
     char choice;
-    int off = 1;
-    printf("\nOptions for selected vinyl:\n");
-    printf("1 - Show detail\n");
-    printf("2 - Edit vinyl\n");
-    printf("3 - Delete vinyl\n");
-    printf("X - Back to mennu\n");
-
-
-    while (off != 0) {
-        printf("Choice: ");
+    int back = 0;
+    while (!back) {
+        printf("\nActions for [%s]:\n", stock[i].name);
+        printf("1 - Show detail\n2 - Edit vinyl\n3 - Delete vinyl\nX - Back\nChoice: ");
         scanf(" %c", &choice);
         switch (choice) {
-            case '1':
-                vinylDetail(i);
-                break;
-            case '2':
-                editVinyl(i);
-                break;
-            case '3':
-                deleteVinyl(i);
-                break;
-            case 'X':
-                off = 0;
-                printf("\nBack\n");
-            default:
-                printf("\033[31m\nInvalid input\033[0m\n");
+            case '1': vinylDetail(i); break;
+            case '2': editVinyl(i); break;
+            case '3': deleteVinyl(i); back = 1; break;
+            case 'X': case 'x': back = 1; break;
+            default: printf("Invalid choice\n");
         }
+    }
+}
+
+void addVinyl() {
+    struct Vinyl *temp = realloc(stock, (countVinyls + 1) * sizeof(struct Vinyl));
+    if (temp == NULL) {
+        printf("Problem in memmory\n");
+        return;
+    }
+    stock = temp;
+
+    struct Vinyl *p = &stock[countVinyls];
+
+    printf("Name: ");
+    scanf(" %[^\n]", p->name);
+    printf("Interpreter: ");
+    scanf(" %[^\n]", p->interpreter);
+    printf("EAN: ");
+    scanf("%s", p->ean);
+    printf("Buy Price: ");
+    scanf("%lf", &p->buyPrice);
+    printf("Sell Price (no DPH): ");
+    scanf("%lf", &p->sellPrice);
+    printf("Amount: ");
+    scanf("%d", &p->amount);
+    printf("DPH Level (0=0%%, 1=10%%, 2=21%%): ");
+    scanf("%d", &p->dph_index);
+    printf("Date (day month year): ");
+    scanf("%d %d %d", &p->date.day, &p->date.month, &p->date.year);
+
+    countVinyls++;
+    printf("\033[32mVinyl added to stock.\033[0m\n");
+}
+
+void allVinyls() {
+    printf("\n%-3s | %-15s | %-10s | %-10s | %-5s\n", "ID", "Name", "Price(DPH)", "Price(clean)", "Amount");
+    printf("----------------------------------------------------------\n");
+    for (int i = 0; i < countVinyls; i++) {
+        double dphPrice = stock[i].sellPrice * DPH_levels[stock[i].dph_index];
+        printf("%d | %-15s | %-10.2f | %-10.2f | %-5d\n",
+                i + 1, stock[i].name, dphPrice, stock[i].sellPrice, stock[i].amount);
     }
 }
 
 void searchByName() {
-    char searchName[30];
-    int found = 0;
-    printf("\n==============================\n");
-    printf("Search vinyl by name");
-    printf("\n==============================\n");
-    printf("Enter vinyl name: ");
+    char searchName[NAME_LEN];
+    printf("Enter vinyl name to search: ");
     scanf(" %[^\n]", searchName);
-
     for (int i = 0; i < countVinyls; i++) {
-        if (strcmp(vinyls[i].name, searchName) == 0) {
-            printf("\033[32mVinyl [name: %s]\033[0m\n", vinyls[i].name);
+        if (strcmp(stock[i].name, searchName) == 0) {
             vinylFuns(i);
-            found = 1;
-            break;
+            return;
         }
     }
-
-    if (!found) {
-        printf("\033[31mVinyl not found\033[0m\n");
-    }
-}
-void searchByPrice() {
-    double min;
-    double max;
-    int found = 0;
-
-    printf("Min price: ");
-    scanf("%lf", &min);
-    printf("Max price: ");
-    scanf("%lf", &max);
-
-    for (int i = 0; i < countVinyls; i++) {
-        if (vinyls[i].price >= min && vinyls[i].price <= max) {
-            printf("\n[%d] %s : %.2f\n", i, vinyls[i].name, vinyls[i].price);
-            found = 1;
-        }
-    }
-
-    if (!found) {
-        printf("\033[31mNo vinyls\033[0m\n");
-    }
+    printf("\033[31mVinyl not found\033[0m\n");
 }
 
 void menu() {
-    int off = 1;
     char choice;
-
-    while (off != 0) {
+    while (1) {
         shopPrint();
         menuPrint();
         printf("Your choice: ");
         scanf(" %c", &choice);
+
         switch (choice) {
             case '1':
                 allVinyls();
                 break;
             case '2':
-                searchByName();
+                addVinyl();
                 break;
             case '3':
-                printf("\n[Search vinyl by price]\n");
+                searchByName();
                 break;
-            case 'X':
-                off = 0;
+            case 'X':case 'x':
+                free(stock);
                 printf("Exiting...\n");
-                break;
-            default:
-                printf("\033[31m\nInvalid input\033[0m\n");
+                return;
+            default: printf("\033[31mInvalid input\033[0m\n");
         }
     }
 }
